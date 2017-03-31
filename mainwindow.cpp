@@ -3,6 +3,7 @@
 #include <echoclient.h>
 #include <curlpp.h>
 #include <QDebug>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -28,10 +29,18 @@ void MainWindow::on_pushButton_clicked()
 		CURLpp handler = CURLpp::Builder()
 				.set_connect_timeout(2000)
 				.set_url("https://slack.com/api/rtm.start?token=" + token.toStdString())
-				.set_verbose(1)
 				.build();
 
 		auto res = handler.performJson();
+
+		// Error checking for rtm.start
+		QString error = "";
+		if(!rtmStartErrorHandler(res, error)){
+			QMessageBox msgBox;
+			msgBox.setText("rtm.start error: " + error);
+			msgBox.exec();
+			return;
+		}
 
 		// Retrieve channel/group data
 		for(Json::ValueIterator i_chann = res["channels"].begin(); i_chann != res["channels"].end(); ++i_chann) {
@@ -48,18 +57,10 @@ void MainWindow::on_pushButton_clicked()
 		QString url = QString::fromStdString(res["url"].asString());
 		emit connectButtonPressed(url);
 
-		// Update the UI
-		ui->lineEdit_2->setEnabled(false);
-		ui->pushButton->setText("disconnect");
-		ui->pushButton->setProperty("connect", false);
 	}else{
 		// Disconnect the WebSocket
 		emit disconnectButtonPressed();
 
-		// Update the UI
-		ui->lineEdit_2->setEnabled(true);
-		ui->pushButton->setText("connect");
-		ui->pushButton->setProperty("connect", true);
 	}
 }
 
@@ -70,9 +71,41 @@ void MainWindow::appendMsgOnMonitor(QString msg)
 	ui->label_2->setText(prev + "\n" + msg);
 }
 
+bool MainWindow::rtmStartErrorHandler(const Json::Value &res, QString &error_message)
+{
+	std::string ok = res["ok"].asString();
+	if(ok.compare("false") == 0){
+		//some error occurred
+		error_message = QString::fromStdString(res["error"].asString());
+		return false;
+	}
+	return true;
+}
+
 void MainWindow::setA(QApplication *value)
 {
 	a = value;
+}
+
+void MainWindow::processMessage(QString msg)
+{
+	appendMsgOnMonitor(msg);
+}
+
+void MainWindow::onConnected()
+{
+	// Update the UI
+	ui->lineEdit_2->setEnabled(false);
+	ui->pushButton->setText("disconnect");
+	ui->pushButton->setProperty("connect", false);
+}
+
+void MainWindow::onDisonnected()
+{
+	// Update the UI
+	ui->lineEdit_2->setEnabled(true);
+	ui->pushButton->setText("connect");
+	ui->pushButton->setProperty("connect", true);
 }
 
 bool MainWindow::getDebug() const

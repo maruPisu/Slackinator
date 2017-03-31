@@ -35,7 +35,9 @@ public:
 	void setA(QApplication *value);
 
 public slots:
-	void appendMsgOnMonitor(QString msg);
+	void processMessage(QString msg);
+	void onConnected();
+	void onDisonnected();
 
 private slots:
 	void on_pushButton_clicked();
@@ -44,6 +46,8 @@ private slots:
 
 private:
 	void instertChannel(Json::Value channel);
+	void appendMsgOnMonitor(QString msg);
+	bool rtmStartErrorHandler(const Json::Value & res, QString &error_message);
 
 	Ui::MainWindow *ui;
 	QApplication * a;

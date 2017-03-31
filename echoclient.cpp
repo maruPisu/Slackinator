@@ -44,12 +44,14 @@ void EchoClient::onConnected()
 	qDebug() << "WebSocket connected";
     connect(&m_webSocket, &QWebSocket::textMessageReceived,
 	    this, &EchoClient::onTextMessageReceived);
+    emit okConnected();
 }
 
 void EchoClient::onDisconnected()
 {
 	if (m_debug)
 	    qDebug() << "WebSocket disconnected";
+	emit okDisconnected();
 }
 
 void EchoClient::onTextMessageReceived(QString message)

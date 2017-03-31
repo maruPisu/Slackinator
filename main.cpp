@@ -23,7 +23,9 @@ int main(int argc, char *argv[])
 	w.show();
 
 	EchoClient client(debug);
-	QObject::connect(&client, SIGNAL(msgReceived(QString)), &w, SLOT(appendMsgOnMonitor(QString)));
+	QObject::connect(&client, SIGNAL(msgReceived(QString)), &w, SLOT(processMessage(QString)));
+	QObject::connect(&client, SIGNAL(okConnected()), &w, SLOT(onConnected()));
+	QObject::connect(&client, SIGNAL(okDisconnected()), &w, SLOT(onDisonnected()));
 	QObject::connect(&w, SIGNAL(connectButtonPressed(QString)), &client, SLOT(open(QString)));
 	QObject::connect(&w, SIGNAL(disconnectButtonPressed()), &client, SLOT(close()));
 	QObject::connect(&w, SIGNAL(sendMessage(QString,QString)), &client, SLOT(sendMessage(QString,QString)));

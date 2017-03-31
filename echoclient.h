@@ -18,6 +18,8 @@ public Q_SLOTS:
 signals:
 	void closed();
 	void msgReceived(QString);
+	void okConnected();
+	void okDisconnected();
 
 private Q_SLOTS:
 	void onConnected();
