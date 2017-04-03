@@ -29,10 +29,15 @@ public:
 	explicit MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
+	void connectFromToken(QString token);
+
 	bool getDebug() const;
 	void setDebug(bool value);
 
 	void setA(QApplication *value);
+
+	QString getDefaultToken() const;
+	void setDefaultToken(const QString &value);
 
 public slots:
 	void processMessage(QString msg);
@@ -48,7 +53,12 @@ private:
 	void instertChannel(Json::Value channel);
 	void appendMsgOnMonitor(QString msg);
 	bool rtmStartErrorHandler(const Json::Value & res, QString &error_message);
+	void parseMessage(QString msg);
+	void roadmapParser(QString text, QString channel);
 
+	QString removeFirstOccurrance(QString source, QString pattern);
+
+	QString defaultToken;
 	Ui::MainWindow *ui;
 	QApplication * a;
 

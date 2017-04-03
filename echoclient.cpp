@@ -11,6 +11,11 @@ EchoClient::EchoClient(bool debug, QObject *parent) :
     connect(&m_webSocket, &QWebSocket::disconnected, this, &EchoClient::onDisconnected);
 }
 
+void EchoClient::fakeMessage(QString message)
+{
+	emit msgReceived(message);
+}
+
 void EchoClient::open(QString url)
 {
 	if (m_debug)
@@ -33,9 +38,12 @@ void EchoClient::sendMessage(QString msg, QString channel)
 				"\"text\": \"%1\""
 			"}";
 
-	m_webSocket.sendTextMessage(skeleton
-				    .arg(msg)
-				    .arg(channel));
+
+	QString totMsg = skeleton
+			.arg(msg)
+			.arg(channel);
+
+	m_webSocket.sendTextMessage(totMsg);
 }
 
 void EchoClient::onConnected()

@@ -9,6 +9,7 @@ class EchoClient : public QObject
 	Q_OBJECT
 public:
 	explicit EchoClient(bool debug = false, QObject *parent = Q_NULLPTR);
+	void fakeMessage(QString message);
 
 public Q_SLOTS:
 	void open(QString url);

@@ -1,9 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <echoclient.h>
 #include <curlpp.h>
 #include <QDebug>
 #include <QMessageBox>
+#include <QFile>
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -25,37 +25,11 @@ void MainWindow::on_pushButton_clicked()
 	if(ui->pushButton->property("connect").toBool()){
 
 		// Retrieve the Websocket Data
-		QString token = ui->lineEdit_2->text();
-		CURLpp handler = CURLpp::Builder()
-				.set_connect_timeout(2000)
-				.set_url("https://slack.com/api/rtm.start?token=" + token.toStdString())
-				.build();
+		QString token = ui->tokenLine->text();
 
-		auto res = handler.performJson();
-
-		// Error checking for rtm.start
-		QString error = "";
-		if(!rtmStartErrorHandler(res, error)){
-			QMessageBox msgBox;
-			msgBox.setText("rtm.start error: " + error);
-			msgBox.exec();
-			return;
-		}
-
-		// Retrieve channel/group data
-		for(Json::ValueIterator i_chann = res["channels"].begin(); i_chann != res["channels"].end(); ++i_chann) {
-			auto o_channel = *i_chann;
-			instertChannel(o_channel);
-		}
-
-		for(Json::ValueIterator i_group = res["groups"].begin(); i_group != res["groups"].end(); ++i_group) {
-			auto o_group = *i_group;
-			instertChannel(o_group);
-		}
+		connectFromToken(token);
 
 		// Initiate the connection with the retrieved URL
-		QString url = QString::fromStdString(res["url"].asString());
-		emit connectButtonPressed(url);
 
 	}else{
 		// Disconnect the WebSocket
@@ -82,6 +56,101 @@ bool MainWindow::rtmStartErrorHandler(const Json::Value &res, QString &error_mes
 	return true;
 }
 
+void MainWindow::parseMessage(QString msg)
+{
+	Json::Value jsonMsg;
+	Json::Reader reader;
+
+	reader.parse(msg.toStdString().c_str(), jsonMsg);
+
+	if(jsonMsg["type"] != "message"){
+		return;
+	}
+
+	QString text = QString::fromStdString(jsonMsg["text"].asString());
+	QString channel = QString::fromStdString(jsonMsg["channel"].asString());
+
+	if(text.startsWith("roadmap ")){
+		roadmapParser(text, channel);
+	}
+}
+
+void MainWindow::roadmapParser(QString text, QString channel)
+{
+	if(text.contains(" add ")){
+		QString toAdd = text;
+		toAdd = removeFirstOccurrance(toAdd, "add");
+		toAdd = removeFirstOccurrance(toAdd, "roadmap");
+		toAdd = toAdd.trimmed();
+
+		emit sendMessage("adding '" + toAdd + "' to the roadmap", channel);
+
+		QFile file ("roadmap");
+		file.open(QIODevice::Append);
+	//	QString content = file.readAll();
+
+		QTextStream out(&file);
+		out << toAdd << "\n";
+		file.close();
+	}
+	if(text.contains(" read all")){
+		QFile file ("roadmap");
+		file.open(QIODevice::ReadOnly);
+		QString variable = file.readAll();
+		file.close();
+		emit sendMessage(variable, channel);
+	}
+}
+
+void MainWindow::connectFromToken(QString token)
+{
+	CURLpp handler = CURLpp::Builder()
+			.set_connect_timeout(2000)
+			.set_url("https://slack.com/api/rtm.start?token=" + token.toStdString())
+			.build();
+
+	auto res = handler.performJson();
+
+	// Error checking for rtm.start
+	QString error = "";
+	if(!rtmStartErrorHandler(res, error)){
+		QMessageBox msgBox;
+		msgBox.setText("rtm.start error: " + error);
+		msgBox.exec();
+		return;
+	}
+
+	// Retrieve channel/group data
+	for(Json::ValueIterator i_chann = res["channels"].begin(); i_chann != res["channels"].end(); ++i_chann) {
+		auto o_channel = *i_chann;
+		instertChannel(o_channel);
+	}
+
+	for(Json::ValueIterator i_group = res["groups"].begin(); i_group != res["groups"].end(); ++i_group) {
+		auto o_group = *i_group;
+		instertChannel(o_group);
+	}
+
+	emit connectButtonPressed(QString::fromStdString(res["url"].asString()));
+}
+
+QString MainWindow::removeFirstOccurrance(QString source, QString pattern)
+{
+	QString ret = source.replace(source.indexOf(pattern), pattern.size(), "");
+	return ret;
+}
+
+QString MainWindow::getDefaultToken() const
+{
+	return defaultToken;
+}
+
+void MainWindow::setDefaultToken(const QString &value)
+{
+	defaultToken = value;
+	ui->tokenLine->setText(defaultToken);
+}
+
 void MainWindow::setA(QApplication *value)
 {
 	a = value;
@@ -89,13 +158,14 @@ void MainWindow::setA(QApplication *value)
 
 void MainWindow::processMessage(QString msg)
 {
+	parseMessage(msg);
 	appendMsgOnMonitor(msg);
 }
 
 void MainWindow::onConnected()
 {
 	// Update the UI
-	ui->lineEdit_2->setEnabled(false);
+	ui->tokenLine->setEnabled(false);
 	ui->pushButton->setText("disconnect");
 	ui->pushButton->setProperty("connect", false);
 }
@@ -103,7 +173,7 @@ void MainWindow::onConnected()
 void MainWindow::onDisonnected()
 {
 	// Update the UI
-	ui->lineEdit_2->setEnabled(true);
+	ui->tokenLine->setEnabled(true);
 	ui->pushButton->setText("connect");
 	ui->pushButton->setProperty("connect", true);
 }

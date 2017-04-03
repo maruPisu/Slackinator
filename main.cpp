@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include <QApplication>
-//#include <QCoreApplication>
 #include <QCommandLineParser>
 #include <echoclient.h>
 #include <curlpp.h>
@@ -13,13 +12,23 @@ int main(int argc, char *argv[])
 	parser.setApplicationDescription("QtWebSockets example: echoclient");
 	parser.addHelpOption();
 
-	QCommandLineOption dbgOption(QStringList() << "d" << "debug",
-		QCoreApplication::translate("main", "Debug output [default: off]."));
-	parser.addOption(dbgOption);
+//	QCommandLineOption dbgOption(QStringList() << "d" << "debug",
+//		QCoreApplication::translate("main", "Debug output [default: off]."));
+//	QCommandLineOption dbgOption2(QStringList() << "t" << "token",
+//		QCoreApplication::translate("main", "Default token [default: empty]."));
+	parser.addOptions({
+				  {"d","specify debug.","on/off"},
+				  {"t","specify token.","string"},
+			  });
 	parser.process(a);
-	bool debug = parser.isSet(dbgOption);
+	bool debug = parser.isSet("d");
+	QString defaultToken = "";
+	if(parser.isSet("t")){
+		defaultToken = parser.value("t");
+	}
 
 	MainWindow w;
+	w.setDefaultToken(defaultToken);
 	w.show();
 
 	EchoClient client(debug);
@@ -29,6 +38,10 @@ int main(int argc, char *argv[])
 	QObject::connect(&w, SIGNAL(connectButtonPressed(QString)), &client, SLOT(open(QString)));
 	QObject::connect(&w, SIGNAL(disconnectButtonPressed()), &client, SLOT(close()));
 	QObject::connect(&w, SIGNAL(sendMessage(QString,QString)), &client, SLOT(sendMessage(QString,QString)));
+
+	if(!defaultToken.isEmpty()){
+		w.connectFromToken(defaultToken);
+	}
 
 	return a.exec();
 }
