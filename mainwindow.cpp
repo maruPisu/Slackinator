@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QFile>
+#include <QRegularExpression>
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -70,36 +71,93 @@ void MainWindow::parseMessage(QString msg)
 	QString text = QString::fromStdString(jsonMsg["text"].asString());
 	QString channel = QString::fromStdString(jsonMsg["channel"].asString());
 
-	if(text.startsWith("roadmap ")){
+	if(checkRegex(text, ".*roadmap.*")){
 		roadmapParser(text, channel);
 	}
 }
 
 void MainWindow::roadmapParser(QString text, QString channel)
 {
-	if(text.contains(" add ")){
-		QString toAdd = text;
-		toAdd = removeFirstOccurrance(toAdd, "add");
-		toAdd = removeFirstOccurrance(toAdd, "roadmap");
-		toAdd = toAdd.trimmed();
+	if(checkRegex(text, RoadmapActions::Add)){
+
+		QString toAdd = replaceRegex(text, RoadmapActions::Add, "\\1");
 
 		emit sendMessage("adding '" + toAdd + "' to the roadmap", channel);
 
 		QFile file ("roadmap");
 		file.open(QIODevice::Append);
-	//	QString content = file.readAll();
 
 		QTextStream out(&file);
 		out << toAdd << "\n";
 		file.close();
 	}
-	if(text.contains(" read all")){
+	if(checkRegex(text, RoadmapActions::ReadAll)){
 		QFile file ("roadmap");
 		file.open(QIODevice::ReadOnly);
 		QString variable = file.readAll();
 		file.close();
-		emit sendMessage(variable, channel);
+
+		QString responseString = "";
+		int id = 0;
+		QStringList splitted = variable.split("\n", QString::SplitBehavior::SkipEmptyParts);
+		for(auto line: splitted){
+			responseString.append(QString::number(++id) + ": " + line + "\\n");
+		}
+
+		emit sendMessage(responseString, channel);
 	}
+	if(checkRegex(text, RoadmapActions::Remove)){
+
+		QString toRemove = replaceRegex(text, RoadmapActions::Remove, "\\1");
+
+		if(!checkRegex(toRemove,"\\d*")){
+			emit sendMessage(toRemove + " is not a valid id", channel);
+			return;
+		}
+
+		emit sendMessage("removing item number " + toRemove + " from the roadmap", channel);
+
+		QFile fileInput ("roadmap");
+		fileInput.open(QIODevice::ReadOnly);
+		QString variable = fileInput.readAll();
+		fileInput.close();
+
+		QString responseString = "";
+		int id = 0;
+		QStringList splitted = variable.split("\n", QString::SplitBehavior::SkipEmptyParts);
+		for(auto line: splitted){
+			if(toRemove.compare(QString::number(++id)) != 0){
+				responseString.append(line + "\n");
+			}
+		}
+
+		QFile fileOutput ("roadmap");
+		fileOutput.open(QIODevice::WriteOnly);
+		QTextStream out(&fileOutput);
+		out << responseString;
+		fileOutput.close();
+	}
+}
+
+bool MainWindow::checkRegex(const QString &text, const QString &regex, bool caseInsensitive)
+{
+	QRegularExpression regexObj(regex);
+	if(caseInsensitive){
+		regexObj.setPatternOptions(QRegularExpression::PatternOption::CaseInsensitiveOption);
+	}
+	return regexObj.match(text).hasMatch();
+}
+
+QString MainWindow::replaceRegex(const QString &text, const QString &regex, const char * after,  bool caseInsensitive)
+{
+	QRegularExpression regexObj(regex);
+	if(caseInsensitive){
+		regexObj.setPatternOptions(QRegularExpression::PatternOption::CaseInsensitiveOption);
+	}
+	QString toAdd = text;
+	toAdd.replace(regexObj, after);
+
+	return toAdd;
 }
 
 void MainWindow::connectFromToken(QString token)

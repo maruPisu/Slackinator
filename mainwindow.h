@@ -17,6 +17,12 @@ namespace Ui {
 class MainWindow;
 }
 
+namespace RoadmapActions{
+const QString Add = ".*roadmap add (.*)";
+const QString ReadAll = ".*roadmap read all.*";
+const QString Remove = ".*roadmap remove (.*)";
+}
+
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -55,6 +61,8 @@ private:
 	bool rtmStartErrorHandler(const Json::Value & res, QString &error_message);
 	void parseMessage(QString msg);
 	void roadmapParser(QString text, QString channel);
+	bool checkRegex(const QString &text, const QString &regex, bool caseInsensitive = true);
+	QString replaceRegex(const QString & text, const QString & regex, const char * after, bool caseInsensitive = true);
 
 	QString removeFirstOccurrance(QString source, QString pattern);
 
