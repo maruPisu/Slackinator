@@ -28,10 +28,16 @@ LIBS += -ldl -ljsoncpp
 SOURCES += main.cpp\
         mainwindow.cpp \
     echoclient.cpp \
-    curlpp.cpp
+    curlpp.cpp \
+    roadmap.cpp \
+    utils.cpp \
+    instantresponse.cpp
 
 HEADERS  += mainwindow.h \
     echoclient.h \
-    curlpp.h
+    curlpp.h \
+    roadmap.h \
+    utils.h \
+    instantresponse.h
 
 FORMS    += mainwindow.ui

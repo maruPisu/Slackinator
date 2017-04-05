@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMap>
+
 class QApplication;
 namespace Json {
 	class Value;
@@ -11,16 +13,20 @@ struct channel{
 	QString name = "";
 	bool isArchived = false;
 	QString id = "";
+
+	static QString getNameFromVector(const QVector<channel> & vec, QString id);
+};
+
+const QStringList notShownTypes{
+	"user_typing",
+	"presence_change",
+	"reconnect_url",
+	"hello",
+	"desktop_notification"
 };
 
 namespace Ui {
 class MainWindow;
-}
-
-namespace RoadmapActions{
-const QString Add = ".*roadmap add (.*)";
-const QString ReadAll = ".*roadmap read all.*";
-const QString Remove = ".*roadmap remove (.*)";
 }
 
 class MainWindow : public QMainWindow
@@ -51,18 +57,15 @@ public slots:
 	void onDisonnected();
 
 private slots:
-	void on_pushButton_clicked();
-
-	void on_pushButton_2_clicked();
+	void on_connectButton_clicked();
+	void on_sendMessageButton_clicked();
 
 private:
 	void instertChannel(Json::Value channel);
 	void appendMsgOnMonitor(QString msg);
 	bool rtmStartErrorHandler(const Json::Value & res, QString &error_message);
 	void parseMessage(QString msg);
-	void roadmapParser(QString text, QString channel);
-	bool checkRegex(const QString &text, const QString &regex, bool caseInsensitive = true);
-	QString replaceRegex(const QString & text, const QString & regex, const char * after, bool caseInsensitive = true);
+	Json::Value parseJson(QString msg);
 
 	QString removeFirstOccurrance(QString source, QString pattern);
 
@@ -71,7 +74,9 @@ private:
 	QApplication * a;
 
 	QVector<channel> channels;
+	QMap<std::string, std::string> usernames;
 
+	QString botid = "";
 
 	bool debug = false;
 };

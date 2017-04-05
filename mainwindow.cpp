@@ -1,19 +1,20 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <curlpp.h>
-#include <QDebug>
 #include <QMessageBox>
-#include <QFile>
-#include <QRegularExpression>
+#include <QDateTime>
+#include "utils.h"
+#include "roadmap.h"
+#include "instantresponse.h"
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::MainWindow)
 {
 	ui->setupUi(this);
-	ui->label_2->setTextInteractionFlags(Qt::TextSelectableByMouse);
+	ui->monitorLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	ui->label_4->setTextInteractionFlags(Qt::TextSelectableByMouse);
-	ui->pushButton->setProperty("connect", true);
+	ui->connectButton->setProperty("connect", true);
 }
 
 MainWindow::~MainWindow()
@@ -21,9 +22,9 @@ MainWindow::~MainWindow()
 	delete ui;
 }
 
-void MainWindow::on_pushButton_clicked()
+void MainWindow::on_connectButton_clicked()
 {
-	if(ui->pushButton->property("connect").toBool()){
+	if(ui->connectButton->property("connect").toBool()){
 
 		// Retrieve the Websocket Data
 		QString token = ui->tokenLine->text();
@@ -41,9 +42,45 @@ void MainWindow::on_pushButton_clicked()
 
 void MainWindow::appendMsgOnMonitor(QString msg)
 {
+
+	static QString toPrintSkeleton = "%1%2@%4: %3";
+
+	Json::Value jsonMsg = parseJson(msg);
+
+	if(jsonMsg.empty()){
+		//dosomething
+		return;
+	}
+	QDateTime now = QDateTime::currentDateTime();
+
+	QString type =	QString::fromStdString(jsonMsg["type"].asString());
+	QString text =	"<FONT COLOR='#00aa00'>" + QString::fromStdString(jsonMsg["text"].asString()) + "</font>" ;
+	std::string user = "";
+	if(usernames.contains(jsonMsg["user"].asString())){
+		user = usernames.value(jsonMsg["user"].asString());
+	}
+	QString thisChannel =  channel::getNameFromVector(channels, QString::fromStdString(jsonMsg["channel"].asString()));
+	QString date = "" + now.toString("<FONT COLOR='#0000aa'>[dd-MM-yyyy hh:mm:ss]</FONT>");
+
+	QString toPrint = toPrintSkeleton
+			.arg(date)
+			.arg(user.c_str())
+			.arg(text)
+			.arg(thisChannel);
+
+
 	// Append the raw data in the monitor tab
-	QString prev = ui->label_2->text();
-	ui->label_2->setText(prev + "\n" + msg);
+	QString prev = ui->monitorLabel->text();
+
+	if(type == "message"){
+		ui->monitorLabel->setText(prev + "<br>" + toPrint);
+	}else if(notShownTypes.contains(type)){
+		//do nothing
+	}else{
+		ui->monitorLabel->setText(prev + "<br>" + date + " <FONT COLOR='#aa0000'>" + msg + "</font>");
+	}
+
+
 }
 
 bool MainWindow::rtmStartErrorHandler(const Json::Value &res, QString &error_message)
@@ -59,105 +96,43 @@ bool MainWindow::rtmStartErrorHandler(const Json::Value &res, QString &error_mes
 
 void MainWindow::parseMessage(QString msg)
 {
-	Json::Value jsonMsg;
-	Json::Reader reader;
+	Json::Value jsonMsg = parseJson(msg);
 
-	reader.parse(msg.toStdString().c_str(), jsonMsg);
+	if(jsonMsg["type"].asString() != "message"){
+		return;
+	}
 
-	if(jsonMsg["type"] != "message"){
+	if(jsonMsg["user"].asString() == botid.toStdString()){
 		return;
 	}
 
 	QString text = QString::fromStdString(jsonMsg["text"].asString());
 	QString channel = QString::fromStdString(jsonMsg["channel"].asString());
 
-	if(checkRegex(text, ".*roadmap.*")){
-		roadmapParser(text, channel);
+	QString instaResp = InstantResponse::autoResponse(text);
+	if(!instaResp.isEmpty()){
+		emit sendMessage(instaResp, channel);
+		return;
+	}
+
+	if(checkRegex(text, ResponseActions::Generic)){
+		emit sendMessage(InstantResponse::computeResponse(text), channel);
+	}
+
+	if(checkRegex(text, RoadmapActions::Generic)){
+		emit sendMessage(Roadmap::computeResponse(text), channel);
 	}
 }
 
-void MainWindow::roadmapParser(QString text, QString channel)
+Json::Value MainWindow::parseJson(QString msg)
 {
-	if(checkRegex(text, RoadmapActions::Add)){
+	Json::Value jsonMsg;
+	Json::Reader reader;
 
-		QString toAdd = replaceRegex(text, RoadmapActions::Add, "\\1");
+	reader.parse(msg.toStdString().c_str(), jsonMsg);
 
-		emit sendMessage("adding '" + toAdd + "' to the roadmap", channel);
+	return jsonMsg;
 
-		QFile file ("roadmap");
-		file.open(QIODevice::Append);
-
-		QTextStream out(&file);
-		out << toAdd << "\n";
-		file.close();
-	}
-	if(checkRegex(text, RoadmapActions::ReadAll)){
-		QFile file ("roadmap");
-		file.open(QIODevice::ReadOnly);
-		QString variable = file.readAll();
-		file.close();
-
-		QString responseString = "";
-		int id = 0;
-		QStringList splitted = variable.split("\n", QString::SplitBehavior::SkipEmptyParts);
-		for(auto line: splitted){
-			responseString.append(QString::number(++id) + ": " + line + "\\n");
-		}
-
-		emit sendMessage(responseString, channel);
-	}
-	if(checkRegex(text, RoadmapActions::Remove)){
-
-		QString toRemove = replaceRegex(text, RoadmapActions::Remove, "\\1");
-
-		if(!checkRegex(toRemove,"\\d*")){
-			emit sendMessage(toRemove + " is not a valid id", channel);
-			return;
-		}
-
-		emit sendMessage("removing item number " + toRemove + " from the roadmap", channel);
-
-		QFile fileInput ("roadmap");
-		fileInput.open(QIODevice::ReadOnly);
-		QString variable = fileInput.readAll();
-		fileInput.close();
-
-		QString responseString = "";
-		int id = 0;
-		QStringList splitted = variable.split("\n", QString::SplitBehavior::SkipEmptyParts);
-		for(auto line: splitted){
-			if(toRemove.compare(QString::number(++id)) != 0){
-				responseString.append(line + "\n");
-			}
-		}
-
-		QFile fileOutput ("roadmap");
-		fileOutput.open(QIODevice::WriteOnly);
-		QTextStream out(&fileOutput);
-		out << responseString;
-		fileOutput.close();
-	}
-}
-
-bool MainWindow::checkRegex(const QString &text, const QString &regex, bool caseInsensitive)
-{
-	QRegularExpression regexObj(regex);
-	if(caseInsensitive){
-		regexObj.setPatternOptions(QRegularExpression::PatternOption::CaseInsensitiveOption);
-	}
-	return regexObj.match(text).hasMatch();
-}
-
-QString MainWindow::replaceRegex(const QString &text, const QString &regex, const char * after,  bool caseInsensitive)
-{
-	QRegularExpression regexObj(regex);
-	if(caseInsensitive){
-		regexObj.setPatternOptions(QRegularExpression::PatternOption::CaseInsensitiveOption);
-	}
-	QString toAdd = text;
-	toAdd.replace(regexObj, after);
-
-	return toAdd;
 }
 
 void MainWindow::connectFromToken(QString token)
@@ -165,6 +140,7 @@ void MainWindow::connectFromToken(QString token)
 	CURLpp handler = CURLpp::Builder()
 			.set_connect_timeout(2000)
 			.set_url("https://slack.com/api/rtm.start?token=" + token.toStdString())
+			.set_verbose(1)
 			.build();
 
 	auto res = handler.performJson();
@@ -178,7 +154,7 @@ void MainWindow::connectFromToken(QString token)
 		return;
 	}
 
-	// Retrieve channel/group data
+	// Retrieve channel/group/user data
 	for(Json::ValueIterator i_chann = res["channels"].begin(); i_chann != res["channels"].end(); ++i_chann) {
 		auto o_channel = *i_chann;
 		instertChannel(o_channel);
@@ -188,6 +164,13 @@ void MainWindow::connectFromToken(QString token)
 		auto o_group = *i_group;
 		instertChannel(o_group);
 	}
+
+	for(Json::ValueIterator i_user = res["users"].begin(); i_user != res["users"].end(); ++i_user) {
+		auto o_user = *i_user;
+		usernames.insert(o_user["id"].asString(), o_user["name"].asString());
+	}
+
+	botid = QString::fromStdString(res["self"]["id"].asString());
 
 	emit connectButtonPressed(QString::fromStdString(res["url"].asString()));
 }
@@ -224,16 +207,16 @@ void MainWindow::onConnected()
 {
 	// Update the UI
 	ui->tokenLine->setEnabled(false);
-	ui->pushButton->setText("disconnect");
-	ui->pushButton->setProperty("connect", false);
+	ui->connectButton->setText("disconnect");
+	ui->connectButton->setProperty("connect", false);
 }
 
 void MainWindow::onDisonnected()
 {
 	// Update the UI
 	ui->tokenLine->setEnabled(true);
-	ui->pushButton->setText("connect");
-	ui->pushButton->setProperty("connect", true);
+	ui->connectButton->setText("connect");
+	ui->connectButton->setProperty("connect", true);
 }
 
 bool MainWindow::getDebug() const
@@ -246,10 +229,10 @@ void MainWindow::setDebug(bool value)
 	debug = value;
 }
 
-void MainWindow::on_pushButton_2_clicked()
+void MainWindow::on_sendMessageButton_clicked()
 {
-	QString msg = ui->lineEdit->text();
-	ui->lineEdit->clear();
+	QString msg = ui->sendMessageLineEdit->text();
+	ui->sendMessageLineEdit->clear();
 	appendMsgOnMonitor("Me: " + msg);
 	emit sendMessage(msg, ui->comboBox->currentData().toString());
 }
@@ -269,4 +252,14 @@ void MainWindow::instertChannel(Json::Value channel)
 	if(!arch){	// insert only if not archived
 		ui->comboBox->addItem(name, id);
 	}
+}
+
+QString channel::getNameFromVector(const QVector<channel> &vec, QString id)
+{
+	for(channel sing: vec){
+		if(sing.id == id){
+			return sing.name;
+		}
+	}
+	return "";
 }

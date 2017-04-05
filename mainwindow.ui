@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Slackinator</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -27,7 +27,7 @@
        <widget class="QLineEdit" name="tokenLine"/>
       </item>
       <item>
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="connectButton">
         <property name="text">
          <string>Connect</string>
         </property>
@@ -61,7 +61,7 @@
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
             <item>
-             <widget class="QLabel" name="label_2">
+             <widget class="QLabel" name="monitorLabel">
               <property name="text">
                <string/>
               </property>
@@ -106,10 +106,10 @@
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_4">
             <item>
-             <widget class="QLineEdit" name="lineEdit"/>
+             <widget class="QLineEdit" name="sendMessageLineEdit"/>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButton_2">
+             <widget class="QPushButton" name="sendMessageButton">
               <property name="text">
                <string>Send</string>
               </property>
@@ -149,9 +149,9 @@
  <resources/>
  <connections>
   <connection>
-   <sender>lineEdit</sender>
+   <sender>sendMessageLineEdit</sender>
    <signal>returnPressed()</signal>
-   <receiver>pushButton_2</receiver>
+   <receiver>sendMessageButton</receiver>
    <slot>click()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -167,7 +167,7 @@
   <connection>
    <sender>tokenLine</sender>
    <signal>returnPressed()</signal>
-   <receiver>pushButton</receiver>
+   <receiver>connectButton</receiver>
    <slot>click()</slot>
    <hints>
     <hint type="sourcelabel">
