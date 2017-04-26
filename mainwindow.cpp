@@ -59,7 +59,10 @@ void MainWindow::appendMsgOnMonitor(QString msg)
 	if(usernames.contains(jsonMsg["user"].asString())){
 		user = usernames.value(jsonMsg["user"].asString());
 	}
-	QString thisChannel =  channel::getNameFromVector(channels, QString::fromStdString(jsonMsg["channel"].asString()));
+	QString thisChannel = "";
+	if(jsonMsg.isConvertibleTo(Json::ValueType::stringValue) && usernames.contains(jsonMsg["channel"].asString())){
+		thisChannel =  channel::getNameFromVector(channels, QString::fromStdString(jsonMsg["channel"].asString()));
+	}
 	QString date = "" + now.toString("<FONT COLOR='#0000aa'>[dd-MM-yyyy hh:mm:ss]</FONT>");
 
 	QString toPrint = toPrintSkeleton
@@ -113,6 +116,12 @@ void MainWindow::parseMessage(QString msg)
 	if(!instaResp.isEmpty()){
 		emit sendMessage(instaResp, channel);
 		return;
+	}
+
+	if(checkRegex(text, GlobalAction::showCommands)){
+		emit sendMessage("all commands:", channel);
+		emit sendMessage(InstantResponse::toString(), channel);
+		emit sendMessage(Roadmap::toString(), channel);
 	}
 
 	if(checkRegex(text, ResponseActions::Generic)){

@@ -16,6 +16,8 @@ public:
 	static QString computeResponse(QString text);
 
 	static QString autoResponse(QString text);
+
+	static QString toString();
 };
 
 #endif // INSTANTRESPONSE_H

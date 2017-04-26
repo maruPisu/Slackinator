@@ -23,6 +23,8 @@ public:
 	 * @return
 	 */
 	static QString computeResponse(QString text);
+
+	static QString toString();
 };
 
 #endif // ROADMAP_H

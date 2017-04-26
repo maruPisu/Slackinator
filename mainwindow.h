@@ -4,6 +4,10 @@
 #include <QMainWindow>
 #include <QMap>
 
+namespace GlobalAction{
+const QString showCommands	= "^show commands$|^help$";
+}
+
 class QApplication;
 namespace Json {
 	class Value;

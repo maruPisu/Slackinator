@@ -13,7 +13,7 @@ QString InstantResponse::computeResponse(QString text)
 
 		QString toAdd = replaceRegex(text, ResponseActions::Add, "\\1");
 
-		if(!toAdd.contains("-->")){
+		if(!toAdd.contains("--&gt;")){
 			return "the message should contain the string '-->' between the pattern and the response";
 		}
 
@@ -96,4 +96,9 @@ QString InstantResponse::autoResponse(QString text)
 		}
 	}
 	return "";
+}
+
+QString InstantResponse::toString()
+{
+	return "auto response [add|remove|read all]";
 }

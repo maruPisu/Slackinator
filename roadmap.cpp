@@ -70,3 +70,9 @@ QString Roadmap::computeResponse(QString text)
 	}
 	return "";
 }
+
+QString Roadmap::toString()
+{
+	return "roadmap [add|remove|read all]";
+
+}
