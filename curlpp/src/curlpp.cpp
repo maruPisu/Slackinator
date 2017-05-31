@@ -2,8 +2,6 @@
 #include "iostream"
 #include <cstring>
 #include <ctime>
-#include <QByteArray>
-#include <QList>
 
 vector<map<string, string>> CURLpp::listOfErrors(NUM_OF_CURL_ERR);
 int CURLpp::error_counter = 0;
@@ -114,30 +112,6 @@ size_t CURLpp::writeMemoryCallback(void *contents, size_t size, size_t nmemb, vo
 	mem->memory[mem->size] = 0;
 
 	return realsize;
-}
-
-/**
- * @brief CURLpp::getListOfErrors
- *
- * returns the last 50 errors ordered by time descending
- * @return
- */
-vector<map<string, string>> CURLpp::getListOfErrors()
-{
-	lock_guard<mutex> el_gringo(error_mutex);
-	if(error_counter == 0){
-		vector_of_errors first_part(listOfErrors.begin(), listOfErrors.end());
-		reverse(first_part.begin(), first_part.end());
-		return first_part;
-
-	}else{
-		vector_of_errors first_part(listOfErrors.begin() + error_counter, listOfErrors.end());
-		vector_of_errors second_part(listOfErrors.begin(), listOfErrors.begin() + error_counter - 1);
-
-		first_part.insert(first_part.end(), second_part.begin(), second_part.end());
-		reverse(first_part.begin(), first_part.end());
-		return first_part;
-	}
 }
 
 CURLpp::CURLpp(const Builder& opt) :marx(curl_easy_init()) {
@@ -301,24 +275,4 @@ CURLpp CURLpp::Builder::build(){
 
 CurlHandlerWrapper::CurlHandlerWrapper(long timeout_in_milliseconds) : handle{curl_easy_init()} {
 	if( handle ) { curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, timeout_in_milliseconds); }
-}
-
-bool CurlHandlerWrapper::sendNotification(const quint64& banner_id, const QList<QByteArray>& UrlList) {
-
-	if( not handle ) { return false; } // a valid handle is needed
-	bool result = true;
-
-	/* Allocate one CURL handle per transfer */
-	for(const auto& e : UrlList) {
-
-		curl_easy_setopt(handle, CURLOPT_URL, e.toStdString().c_str());
-
-		bool ok = ( CURLE_OK == curl_easy_perform(handle) );
-		if( not ok ) {
-			std::cout << "Failed to send Notification of banner_id " << banner_id << " to " << e.toStdString();
-		}
-		result &= ok; // mark if error but keep on going
-	}
-
-	return result;
 }

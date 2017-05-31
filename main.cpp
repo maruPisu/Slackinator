@@ -2,7 +2,6 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <echoclient.h>
-#include <curlpp.h>
 
 int main(int argc, char *argv[])
 {

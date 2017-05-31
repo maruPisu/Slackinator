@@ -22,22 +22,19 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
-LIBS += -lcurl
+QMAKE_LFLAGS+=-L/tmp/install/lib
+INCLUDEPATH+=/tmp/install/include
+
+
 LIBS += -ldl -ljsoncpp
+LIBS += -lcurlpp
+LIBS += -lcurl -lslackinator
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    echoclient.cpp \
-    curlpp.cpp \
-    roadmap.cpp \
-    utils.cpp \
-    instantresponse.cpp
+	mainwindow.cpp \
+	echoclient.cpp
 
 HEADERS  += mainwindow.h \
-    echoclient.h \
-    curlpp.h \
-    roadmap.h \
-    utils.h \
-    instantresponse.h
+	echoclient.h
 
 FORMS    += mainwindow.ui
